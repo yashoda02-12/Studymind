@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StudyMind — AI Study Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #13161e;
+    --surface2: #1c202c;
+    --border: #252a38;
+    --accent: #e8c547;
+    --accent2: #5b8def;
+    --accent3: #e05c8a;
+    --text: #e8ecf4;
+    --muted: #6b738a;
+    --muted2: #9099b3;
+    --success: #47c9a2;
+    --radius: 14px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(92,141,239,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(92,141,239,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Ambient glow blobs */
+  .blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .blob-1 { width: 500px; height: 500px; background: var(--accent2); top: -150px; right: -100px; }
+  .blob-2 { width: 400px; height: 400px; background: var(--accent3); bottom: -100px; left: -100px; }
+  .blob-3 { width: 300px; height: 300px; background: var(--accent); top: 50%; left: 50%; transform: translate(-50%,-50%); opacity: 0.06; }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* Header */
+  header {
+    padding: 40px 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .logo-area { display: flex; align-items: center; gap: 14px; }
+
+  .logo-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--accent) 0%, #f0a832 100%);
+    border-radius: 12px;
+    display: grid; place-items: center;
+    font-size: 20px;
+    box-shadow: 0 0 24px rgba(232,197,71,0.4);
+    flex-shrink: 0;
+  }
+
+  .logo-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .badge {
+    background: rgba(92,141,239,0.15);
+    border: 1px solid rgba(92,141,239,0.3);
+    color: var(--accent2);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 100px;
+  }
+
+  /* API key bar */
+  .api-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .api-bar label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .api-input {
+    flex: 1;
+    min-width: 200px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    padding: 9px 14px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .api-input:focus { border-color: var(--accent2); }
+  .api-input::placeholder { color: var(--muted); }
+
+  .api-hint {
+    font-size: 0.75rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .api-hint a { color: var(--accent2); text-decoration: none; }
+  .api-hint a:hover { text-decoration: underline; }
+
+  /* Main card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .card-header {
+    padding: 22px 28px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .card-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .card-header .step {
+    width: 24px; height: 24px;
+    background: var(--accent);
+    color: #000;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .notes-wrap { padding: 20px 28px; }
+
+  textarea {
+    width: 100%;
+    min-height: 220px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.92rem;
+    line-height: 1.65;
+    padding: 16px 20px;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  textarea:focus {
+    border-color: rgba(92,141,239,0.5);
+    box-shadow: 0 0 0 3px rgba(92,141,239,0.08);
+  }
+
+  textarea::placeholder { color: var(--muted); }
+
+  .char-count {
+    text-align: right;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 8px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Action buttons */
+  .actions { padding: 0 28px 28px; }
+  .actions-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 12px;
+  }
+
+  .btn-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 20px;
+    border-radius: 11px;
+    border: 1px solid transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.87rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    letter-spacing: 0.01em;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .btn:hover::after { opacity: 0.06; }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+  .btn-summary {
+    background: linear-gradient(135deg, #5b8def 0%, #3d6fd4 100%);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(91,141,239,0.3);
+  }
+
+  .btn-quiz {
+    background: linear-gradient(135deg, #e8c547 0%, #d4a82a 100%);
+    color: #000;
+    box-shadow: 0 4px 20px rgba(232,197,71,0.3);
+  }
+
+  .btn-terms {
+    background: linear-gradient(135deg, #e05c8a 0%, #c73d70 100%);
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(224,92,138,0.3);
+  }
+
+  .btn-flashcards {
+    background: linear-gradient(135deg, #47c9a2 0%, #2da882 100%);
+    color: #000;
+    box-shadow: 0 4px 20px rgba(71,201,162,0.3);
+  }
+
+  .btn-icon { font-size: 1rem; }
+
+  /* Results */
+  .results-section { display: none; }
+  .results-section.visible { display: block; animation: fadeUp 0.4s ease; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+
+  .result-header {
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .result-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+
+  .result-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot-summary { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+  .dot-quiz { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .dot-terms { background: var(--accent3); box-shadow: 0 0 8px var(--accent3); }
+  .dot-flashcards { background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+  .copy-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .copy-btn:hover {
+    border-color: var(--accent2);
+    color: var(--accent2);
+  }
+
+  .result-body {
+    padding: 0 28px 28px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Summary */
+  .summary-text {
+    font-size: 0.93rem;
+    line-height: 1.75;
+    color: var(--text);
+    padding-top: 20px;
+  }
+
+  /* Quiz */
+  .quiz-list { padding-top: 20px; list-style: none; }
+
+  .quiz-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .quiz-item:hover { border-color: rgba(232,197,71,0.4); }
+
+  .q-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+
+  .q-text {
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+
+  .reveal-btn {
+    background: transparent;
+    border: 1px solid rgba(232,197,71,0.3);
+    color: var(--accent);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.77rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .reveal-btn:hover {
+    background: rgba(232,197,71,0.1);
+  }
+
+  .answer {
+    display: none;
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: rgba(71,201,162,0.08);
+    border: 1px solid rgba(71,201,162,0.25);
+    border-radius: 8px;
+    font-size: 0.87rem;
+    color: var(--success);
+    line-height: 1.5;
+  }
+
+  .answer.shown { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Key terms */
+  .terms-grid {
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .term-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 14px;
+    align-items: start;
+    transition: border-color 0.2s;
+  }
+
+  .term-item:hover { border-color: rgba(224,92,138,0.35); }
+
+  .term-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--accent3);
+    padding-top: 2px;
+    white-space: nowrap;
+  }
+
+  .term-def {
+    font-size: 0.88rem;
+    color: var(--muted2);
+    line-height: 1.55;
+  }
+
+  /* Flashcards */
+  .flashcards-grid {
+    padding-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+  }
+
+  .flashcard {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    cursor: pointer;
+    perspective: 600px;
+    min-height: 120px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .flashcard:hover {
+    border-color: rgba(71,201,162,0.35);
+    box-shadow: 0 4px 20px rgba(71,201,162,0.08);
+  }
+
+  .flashcard-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.5s ease;
+  }
+
+  .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+
+  .fc-front, .fc-back {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .fc-back { transform: rotateY(180deg); }
+
+  .fc-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .fc-front .fc-label { color: var(--success); opacity: 0.8; }
+  .fc-back .fc-label { color: var(--accent3); opacity: 0.8; }
+
+  .fc-text {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .fc-hint {
+    margin-top: auto;
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+
+  .fc-back .fc-text { color: var(--muted2); font-weight: 400; }
+
+  /* Loading */
+  .loading-state {
+    display: none;
+    padding: 48px 28px;
+    text-align: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .loading-state.active { display: flex; }
+
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent2);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-label {
+    font-size: 0.88rem;
+    color: var(--muted2);
+    font-weight: 500;
+  }
+
+  .loading-dots::after {
+    content: '';
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+
+  @keyframes dots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+  }
+
+  /* Error */
+  .error-msg {
+    display: none;
+    background: rgba(224,92,138,0.1);
+    border: 1px solid rgba(224,92,138,0.3);
+    color: #f08dab;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-size: 0.87rem;
+    margin: 0 28px 20px;
+    line-height: 1.5;
+  }
+
+  .error-msg.visible { display: block; animation: fadeIn 0.2s ease; }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 32px 0;
+    font-size: 0.78rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    margin-top: 40px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    header { padding: 24px 0 20px; }
+    .card-header, .notes-wrap, .actions, .result-header, .result-body { padding-left: 18px; padding-right: 18px; }
+    .btn-grid { grid-template-columns: 1fr 1fr; }
+    .flashcards-grid { grid-template-columns: 1fr; }
+    .logo-text { font-size: 1.3rem; }
+  }
+
+  @media (max-width: 400px) {
+    .btn-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<div class="container">
+  <header>
+    <div class="logo-area">
+      <div class="logo-icon">📚</div>
+      <div class="logo-text">Study<span>Mind</span></div>
+    </div>
+    <span class="badge">AI-Powered</span>
+  </header>
+
+  <!-- API Key bar -->
+  <div class="api-bar">
+    <label>API Key</label>
+    <input type="password" class="api-input" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off" />
+    <span class="api-hint">
+      Get yours free at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+    </span>
+  </div>
+
+  <!-- Input card -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step">1</div>
+      <h2>Paste Your Notes</h2>
+    </div>
+    <div class="notes-wrap">
+      <textarea id="notesInput" placeholder="Paste your raw, messy notes here — lecture notes, textbook excerpts, anything. StudyMind will transform them into clean study material.
+
+Example: 'mitochondria is the powerhouse of the cell, ATP production, cristae structure important for surface area, anaerobic vs aerobic respiration, Krebs cycle happens in matrix...'"></textarea>
+      <div class="char-count"><span id="charCount">0</span> characters</div>
+    </div>
+    <div class="actions">
+      <div class="actions-label">Step 2 — Choose what to generate</div>
+      <div class="btn-grid">
+        <button class="btn btn-summary" onclick="generate('summary')">
+          <span class="btn-icon">📝</span> Generate Summary
+        </button>
+        <button class="btn btn-quiz" onclick="generate('quiz')">
+          <span class="btn-icon">🧠</span> Create Quiz
+        </button>
+        <button class="btn btn-terms" onclick="generate('terms')">
+          <span class="btn-icon">🔑</span> Key Terms
+        </button>
+        <button class="btn btn-flashcards" onclick="generate('flashcards')">
+          <span class="btn-icon">🃏</span> Flashcards
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="result-card" id="loadingCard" style="display:none;">
+    <div class="loading-state active">
+      <div class="spinner"></div>
+      <div class="loading-label loading-dots" id="loadingLabel">Thinking</div>
+    </div>
+  </div>
+
+  <!-- Results section -->
+  <div class="results-section" id="resultsSection">
+
+    <!-- Summary result -->
+    <div class="result-card" id="summaryResult" style="display:none;">
+      <div class="result-header">
+        <div class="result-title">
+          <div class="result-dot dot-summary"></div>
+          📝 Summary
+        </div>
+        <button class="copy-btn" onclick="copyResult('summaryContent')">📋 Copy</button>
+      </div>
+      <div class="result-body">
+        <div class="summary-text" id="summaryContent"></div>
+      </div>
+    </div>
+
+    <!-- Quiz result -->
+    <div class="result-card" id="quizResult" style="display:none;">
+      <div class="result-header">
+        <div class="result-title">
+          <div class="result-dot dot-quiz"></div>
+          🧠 Quiz Questions
+        </div>
+        <button class="copy-btn" onclick="copyQuiz()">📋 Copy</button>
+      </div>
+      <div class="result-body">
+        <ul class="quiz-list" id="quizContent"></ul>
+      </div>
+    </div>
+
+    <!-- Terms result -->
+    <div class="result-card" id="termsResult" style="display:none;">
+      <div class="result-header">
+        <div class="result-title">
+          <div class="result-dot dot-terms"></div>
+          🔑 Key Terms
+        </div>
+        <button class="copy-btn" onclick="copyResult('termsContentRaw')">📋 Copy</button>
+      </div>
+      <div class="result-body">
+        <div class="terms-grid" id="termsContent"></div>
+        <div id="termsContentRaw" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- Flashcards result -->
+    <div class="result-card" id="flashcardsResult" style="display:none;">
+      <div class="result-header">
+        <div class="result-title">
+          <div class="result-dot dot-flashcards"></div>
+          🃏 Flashcards
+          <span style="font-size:0.72rem;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400;">— click to flip</span>
+        </div>
+      </div>
+      <div class="result-body">
+        <div class="flashcards-grid" id="flashcardsContent"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Error -->
+  <div class="error-msg" id="errorMsg"></div>
+
+  <footer>
+    StudyMind — built with ♥ using the Anthropic API &nbsp;·&nbsp; Your notes never leave your browser
+  </footer>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let quizData = [];
+
+// ── Char counter ───────────────────────────────────────────────────────────
+const notesInput = document.getElementById('notesInput');
+const charCount = document.getElementById('charCount');
+notesInput.addEventListener('input', () => {
+  charCount.textContent = notesInput.value.length.toLocaleString();
+});
+
+// ── Prompts ────────────────────────────────────────────────────────────────
+const prompts = {
+  summary: (notes) => `You are a smart study assistant. Read the student's notes below and produce a clean, well-structured summary.
+
+Structure your response with:
+- A concise overview paragraph (2-4 sentences)
+- Key points as bullet items (use • prefix)
+- Any important sub-points indented with  –
+
+Keep it clear, academic, and easy to study from. Focus on the most important ideas.
+
+Student notes:
+${notes}`,
+
+  quiz: (notes) => `You are a sharp quiz-maker. Based on the student's notes below, create exactly 5 quiz questions with answers. These should test genuine understanding, not just recall.
+
+Format your response ONLY as valid JSON, with no extra text, like this:
+[
+  {
+    "question": "Question text here?",
+    "answer": "Clear answer here."
+  }
+]
+
+Mix question styles: some conceptual, some application, some definition-based.
+
+Student notes:
+${notes}`,
+
+  terms: (notes) => `You are a study assistant. Extract the most important key terms, concepts, and vocabulary from these student notes.
+
+Format your response ONLY as valid JSON, with no extra text, like this:
+[
+  {
+    "term": "Term name",
+    "definition": "Clear, concise definition in 1-2 sentences."
+  }
+]
+
+Extract 6-10 of the most significant terms. Prioritize terms that are specific to the subject matter.
+
+Student notes:
+${notes}`,
+
+  flashcards: (notes) => `You are a flashcard creator. Based on the student's notes, create 6 flashcards for studying. Each card has a front (question/prompt) and back (answer).
+
+Format your response ONLY as valid JSON, with no extra text, like this:
+[
+  {
+    "front": "What is...? / Define... / Explain...",
+    "back": "Concise answer."
+  }
+]
+
+Make fronts clear prompts and backs concise, memorable answers.
+
+Student notes:
+${notes}`
+};
+
+// ── Main generate function ─────────────────────────────────────────────────
+async function generate(type) {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const notes = notesInput.value.trim();
+
+  clearError();
+
+  if (!apiKey) return showError('Please enter your Anthropic API key above.');
+  if (!notes || notes.length < 20) return showError('Please paste some notes first (at least a sentence or two).');
+
+  setLoading(true, type);
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{ role: 'user', content: prompts[type](notes) }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = err?.error?.message || `API error (${res.status})`;
+      if (res.status === 401) throw new Error('Invalid API key. Check your key at console.anthropic.com.');
+      if (res.status === 429) throw new Error('Rate limit reached. Wait a moment and try again.');
+      throw new Error(msg);
+    }
+
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+
+    setLoading(false);
+    renderResult(type, text);
+
+  } catch (err) {
+    setLoading(false);
+    showError(err.message || 'Something went wrong. Please try again.');
+  }
+}
+
+// ── Render results ─────────────────────────────────────────────────────────
+function renderResult(type, text) {
+  const section = document.getElementById('resultsSection');
+  section.classList.add('visible');
+
+  // Hide all result cards first
+  ['summaryResult','quizResult','termsResult','flashcardsResult'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+
+  if (type === 'summary') {
+    renderSummary(text);
+  } else if (type === 'quiz') {
+    renderQuiz(text);
+  } else if (type === 'terms') {
+    renderTerms(text);
+  } else if (type === 'flashcards') {
+    renderFlashcards(text);
+  }
+
+  // Scroll to results
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderSummary(text) {
+  const el = document.getElementById('summaryResult');
+  const content = document.getElementById('summaryContent');
+  el.style.display = 'block';
+
+  // Convert bullet formatting to HTML
+  const html = text
+    .split('\n')
+    .map(line => {
+      line = line.trim();
+      if (!line) return '<br>';
+      if (line.startsWith('•')) return `<div style="display:flex;gap:10px;margin:4px 0"><span style="color:var(--accent2);flex-shrink:0">•</span><span>${line.slice(1).trim()}</span></div>`;
+      if (line.startsWith('–') || line.startsWith('-')) return `<div style="display:flex;gap:10px;margin:3px 0 3px 20px"><span style="color:var(--muted);flex-shrink:0">–</span><span style="color:var(--muted2)">${line.slice(1).trim()}</span></div>`;
+      if (line.startsWith('#')) return `<h3 style="font-family:'Playfair Display',serif;font-size:1rem;margin:12px 0 6px;color:var(--text)">${line.replace(/^#+\s*/, '')}</h3>`;
+      return `<p style="margin:8px 0">${line}</p>`;
+    })
+    .join('');
+
+  content.innerHTML = html;
+}
+
+function renderQuiz(text) {
+  const el = document.getElementById('quizResult');
+  const list = document.getElementById('quizContent');
+  el.style.display = 'block';
+
+  try {
+    const clean = text.replace(/```json|```/g, '').trim();
+    quizData = JSON.parse(clean);
+  } catch {
+    // Fallback: try to extract JSON array
+    const match = text.match(/\[[\s\S]*\]/);
+    if (match) {
+      try { quizData = JSON.parse(match[0]); } catch { quizData = []; }
+    }
+  }
+
+  if (!quizData.length) {
+    list.innerHTML = `<li style="color:var(--muted);padding:16px 0">Couldn't parse quiz. Try again.</li>`;
+    return;
+  }
+
+  list.innerHTML = quizData.map((q, i) => `
+    <li class="quiz-item">
+      <div class="q-num">QUESTION ${i + 1} OF ${quizData.length}</div>
+      <div class="q-text">${escapeHtml(q.question)}</div>
+      <button class="reveal-btn" onclick="toggleAnswer(this)">Show Answer</button>
+      <div class="answer">💡 ${escapeHtml(q.answer)}</div>
+    </li>
+  `).join('');
+}
+
+function renderTerms(text) {
+  const el = document.getElementById('termsResult');
+  const grid = document.getElementById('termsContent');
+  const raw = document.getElementById('termsContentRaw');
+  el.style.display = 'block';
+
+  let terms = [];
+  try {
+    const clean = text.replace(/```json|```/g, '').trim();
+    terms = JSON.parse(clean);
+  } catch {
+    const match = text.match(/\[[\s\S]*\]/);
+    if (match) { try { terms = JSON.parse(match[0]); } catch {} }
+  }
+
+  if (!terms.length) {
+    grid.innerHTML = `<div style="color:var(--muted);padding:16px 0">Couldn't parse terms. Try again.</div>`;
+    return;
+  }
+
+  grid.innerHTML = terms.map(t => `
+    <div class="term-item">
+      <div class="term-name">${escapeHtml(t.term)}</div>
+      <div class="term-def">${escapeHtml(t.definition)}</div>
+    </div>
+  `).join('');
+
+  raw.textContent = terms.map(t => `${t.term}: ${t.definition}`).join('\n');
+}
+
+function renderFlashcards(text) {
+  const el = document.getElementById('flashcardsResult');
+  const grid = document.getElementById('flashcardsContent');
+  el.style.display = 'block';
+
+  let cards = [];
+  try {
+    const clean = text.replace(/```json|```/g, '').trim();
+    cards = JSON.parse(clean);
+  } catch {
+    const match = text.match(/\[[\s\S]*\]/);
+    if (match) { try { cards = JSON.parse(match[0]); } catch {} }
+  }
+
+  if (!cards.length) {
+    grid.innerHTML = `<div style="color:var(--muted);padding:16px 0">Couldn't parse flashcards. Try again.</div>`;
+    return;
+  }
+
+  grid.innerHTML = cards.map((c, i) => `
+    <div class="flashcard" onclick="this.classList.toggle('flipped')" title="Click to flip">
+      <div class="flashcard-inner">
+        <div class="fc-front">
+          <div class="fc-label">▶ Front</div>
+          <div class="fc-text">${escapeHtml(c.front)}</div>
+          <div class="fc-hint">Click to reveal answer</div>
+        </div>
+        <div class="fc-back">
+          <div class="fc-label">◀ Back</div>
+          <div class="fc-text">${escapeHtml(c.back)}</div>
+          <div class="fc-hint">Click to flip back</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function toggleAnswer(btn) {
+  const answer = btn.nextElementSibling;
+  const showing = answer.classList.contains('shown');
+  answer.classList.toggle('shown');
+  btn.textContent = showing ? 'Show Answer' : 'Hide Answer';
+}
+
+function setLoading(on, type = '') {
+  const card = document.getElementById('loadingCard');
+  const label = document.getElementById('loadingLabel');
+  const btns = document.querySelectorAll('.btn');
+
+  if (on) {
+    const labels = {
+      summary: 'Summarising your notes',
+      quiz: 'Crafting quiz questions',
+      terms: 'Extracting key terms',
+      flashcards: 'Building flashcards'
+    };
+    label.textContent = labels[type] || 'Thinking';
+    card.style.display = 'block';
+    btns.forEach(b => b.disabled = true);
+    document.getElementById('resultsSection').classList.remove('visible');
+  } else {
+    card.style.display = 'none';
+    btns.forEach(b => b.disabled = false);
+  }
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = `⚠️  ${msg}`;
+  el.classList.add('visible');
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function clearError() {
+  document.getElementById('errorMsg').classList.remove('visible');
+}
+
+function copyResult(elementId) {
+  const el = document.getElementById(elementId);
+  const text = el.innerText || el.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('Copied!');
+  });
+}
+
+function copyQuiz() {
+  const text = quizData.map((q, i) => `Q${i+1}: ${q.question}\nA: ${q.answer}`).join('\n\n');
+  navigator.clipboard.writeText(text).then(() => showToast('Copied!'));
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
+    background: 'var(--success)', color: '#000', fontFamily: "'DM Sans', sans-serif",
+    fontWeight: '600', fontSize: '0.82rem', padding: '9px 18px', borderRadius: '100px',
+    zIndex: '9999', boxShadow: '0 4px 16px rgba(71,201,162,0.4)',
+    animation: 'fadeIn 0.2s ease'
+  });
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 1800);
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
