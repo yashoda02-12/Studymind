@@ -1,2 +1,3 @@
 # Studymind
 AI-powered study assistant that transforms messy notes into summaries, quizzes, key terms, and flashcards
+StudyMind is a browser-based AI study tool built with HTML, CSS, and JavaScript. Paste your raw lecture notes and instantly generate clean summaries, quiz questions, key term glossaries, and interactive flashcards — all powered by Claude AI. No backend needed, runs entirely in the browser.
